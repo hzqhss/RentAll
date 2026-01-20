@@ -1,0 +1,242 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% block content %}
+<div class="main_content">
+    <div class="mcontainer">
+        <div class="bg-white rounded-2xl shadow-sm md:p-8 p-4">
+            <h1 class="text-2xl font-bold mb-6">Notifications</h1>
+
+            <div class="divide-y dark:divide-gray-700">
+                {% for notification in notifications %}
+                <div class="flex items-start space-x-4 py-4">
+                    {% if notification.notification_type == "Dispute Report" or not notification.sender %}
+                        <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                            <ion-icon name="cog-outline" class="text-2xl text-gray-500"></ion-icon>
+                        </div>
+                    {% else %}
+                        <img src="{{ notification.sender.profile.image.url }}" alt="" class="w-12 h-12 rounded-full">
+                    {% endif %}
+                    <div class="flex-1">
+                        <p class="text-base">
+                            {% if notification.notification_type == "Dispute Report" %}
+                                {% if notification.dispute.product and notification.dispute.product.slug %}
+                                    Someone reported your item 
+                                    <a href="{% url 'core:item-detail' notification.dispute.product.slug %}" class="font-semibold text-blue-500">"{{ notification.dispute.product.title }}"</a>.
+                                    <br>
+                                    <span class="text-gray-500 text-sm">Reason: <span class="font-semibold">{{ notification.dispute.reason }}</span></span>
+                                {% elif notification.dispute.reported_user %}
+                                    Someone has submitted a report against your profile.
+                                    <br>
+                                    <span class="text-gray-500 text-sm">Reason: <span class="font-semibold">{{ notification.dispute.reason }}</span></span>
+                                {% endif %}
+                            {% elif notification.notification_type == "Dispute Status Update" %}
+                                {% comment %} Logic for displaying status updates for both product and user reports {% endcomment %}
+                                {% if notification.dispute.product and notification.dispute.product.slug %}
+                                    {% if request.user == notification.dispute.reporter %}
+                                        Admin has updated the status of your report for item <a href="{% url 'core:item-detail' notification.dispute.product.slug %}" class="font-semibold text-blue-500">"{{ notification.dispute.product.title }}"</a> to <span class="font-semibold">{{ notification.dispute.status|title }}</span>.
+                                    {% elif request.user == notification.dispute.product.user %}
+                                        Admin has updated the status of a report against your item <a href="{% url 'core:item-detail' notification.dispute.product.slug %}" class="font-semibold text-blue-500">"{{ notification.dispute.product.title }}"</a> to <span class="font-semibold">{{ notification.dispute.status|title }}</span>.
+                                    {% endif %}
+                                {% elif notification.dispute.reported_user %}
+                                    {% if request.user == notification.dispute.reporter %}
+                                        Admin has updated the status of your report against user <a href="{% url 'userauths:profile' notification.dispute.reported_user.username %}" class="font-semibold text-blue-500">{{ notification.dispute.reported_user.profile.full_name }}</a> to <span class="font-semibold">{{ notification.dispute.status|title }}</span>.
+                                    {% elif request.user == notification.dispute.reported_user %}
+                                        Admin has updated the status of a report made against you to <span class="font-semibold">{{ notification.dispute.status|title }}</span>.
+                                    {% endif %}
+                                {% endif %}
+
+                            {% elif notification.notification_type == "Rental Request" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> wants to rent your item 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}.
+                                <div class="mt-2">
+                                    <a href="{% url 'core:rental-progress' %}" class="button bg-blue-600 text-white text-xs px-3 py-1">Review Request</a>
+                                </div>
+                            {% elif notification.notification_type == "Rental Request Approved" %}
+                                Your request to rent 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                has been <span class="text-green-600 font-semibold">approved</span> by 
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a>.
+                                <br><span class="text-red-600 text-sm font-semibold">Please pay within 12 hours. If not, this booking will be cancelled.</span>
+                                {% if notification.rental_request and notification.rental_request.rr_id %}
+                                <div class="mt-2">
+                                    <a href="{% url 'core:invoice' notification.rental_request.rr_id %}" class="button bg-green-500 text-white text-xs px-3 py-1">View Invoice</a>
+                                </div>
+                                {% endif %}
+                            {% elif notification.notification_type == "Rental Request Declined" %}
+                                Your request to rent 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                has been <span class="text-red-600 font-semibold">declined</span> by 
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a>.
+                                <br><span class="text-gray-500 text-sm">You may try to contact the owner if you would like to discuss the details further.</span>
+                            {% elif notification.notification_type == "Friend Added" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> has followed you.
+                            {% elif notification.notification_type == "Item Handed Over" %}
+                                The item 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                has been handed over by <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a>. Please confirm receipt in "My Rentals".
+                                <div class="mt-2">
+                                    <a href="{% url 'core:my-rental' %}" class="button bg-blue-600 text-white text-xs px-3 py-1">Open My Rentals</a>
+                                </div>
+                            {% elif notification.notification_type == "Item Received" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> has confirmed receipt of 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                . The rental is now Ongoing.
+                            {% elif notification.notification_type == "Item Returned" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> has marked 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                as returned. Please confirm the return in "Rental Progress" to complete the rental.
+                                <div class="mt-2">
+                                    <a href="{% url 'core:rental-progress' %}" class="button bg-blue-600 text-white text-xs px-3 py-1">View Rental Progress</a>
+                                </div>
+                            {% elif notification.notification_type == "Payment Completed" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> has completed the payment for
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                .
+                                <br><span class="text-gray-500 text-sm">Please arrange to hand over the item to the renter.</span>
+                                {% if notification.rental_request and notification.rental_request.rr_id %}
+                                <div class="mt-2">
+                                    <a href="{% url 'core:start_rental_chat' notification.rental_request.rr_id %}?type=handover" class="button bg-blue-600 text-white text-xs px-3 py-1">Message renter to set handover schedule</a>
+                                </div>
+                                {% endif %}
+                            {% elif notification.notification_type == "Rental Period Ended" %}
+                                Your rental period for 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                has ended. Please return the item to the owner.
+                                {% if notification.rental_request and notification.rental_request.rr_id %}
+                                <div class="mt-2">
+                                    <a href="{% url 'core:start_rental_chat' notification.rental_request.rr_id %}?type=return" class="button bg-blue-600 text-white text-xs px-3 py-1">Message owner to set return schedule</a>
+                                </div>
+                                {% endif %}
+                            {% elif notification.notification_type == "Rental Completed" %}
+                                Your rental for 
+                                {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                    <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                {% endif %}
+                                has been completed. Thank you for renting with <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a>.
+                                <div class="mt-2">
+                                    <a href="{% url 'core:my-rental' %}" class="button bg-blue-600 text-white text-xs px-3 py-1">Open My Rentals</a>
+                                </div>
+
+                            {% elif notification.notification_type == "Rental Request Cancelled" %}
+                                {% if notification.user == notification.rental_request.renter %}
+                                    Your rental request for 
+                                    {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                        <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                    {% else %}
+                                        <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                    {% endif %}
+                                    was automatically cancelled due to non-payment within 12 hours.
+                                {% elif notification.user == notification.rental_request.owner %}
+                                    The rental request from <a href="{% url 'userauths:profile' notification.rental_request.renter.username %}" class="font-semibold">{{ notification.rental_request.renter.profile.full_name }}</a> for 
+                                    {% if notification.rental_request and notification.rental_request.product and notification.rental_request.product.slug %}
+                                        <a href="{% url 'core:item-detail' notification.rental_request.product.slug %}" class="font-semibold text-blue-500">"{{ notification.rental_request.product.title|truncatechars:30 }}"</a>
+                                    {% else %}
+                                        <span class="font-semibold text-gray-500">"(Item unavailable)"</span>
+                                    {% endif %}
+                                    was automatically cancelled.
+                                {% endif %}
+                            {% elif notification.notification_type == "New Like" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> liked your post 
+                                {% if notification.post and notification.post.slug %}
+                                    <a href="{% url 'core:post-detail' notification.post.slug %}" class="font-semibold text-blue-500">"{{ notification.post.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Post unavailable)"</span>
+                                {% endif %}.
+                            {% elif notification.notification_type == "New Comment" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> commented on your post 
+                                {% if notification.post and notification.post.slug %}
+                                    <a href="{% url 'core:post-detail' notification.post.slug %}" class="font-semibold text-blue-500">"{{ notification.post.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Post unavailable)"</span>
+                                {% endif %}.
+                            {% elif notification.notification_type == "Comment Liked" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> liked your comment on 
+                                {% if notification.post and notification.post.slug %}
+                                    <a href="{% url 'core:post-detail' notification.post.slug %}" class="font-semibold text-blue-500">"{{ notification.post.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Post unavailable)"</span>
+                                {% endif %}.
+                            {% elif notification.notification_type == "Comment Replied" %}
+                                <a href="{% url 'userauths:profile' notification.sender.username %}" class="font-semibold">{{ notification.sender.profile.full_name }}</a> replied to your comment on 
+                                {% if notification.post and notification.post.slug %}
+                                    <a href="{% url 'core:post-detail' notification.post.slug %}" class="font-semibold text-blue-500">"{{ notification.post.title|truncatechars:30 }}"</a>
+                                {% else %}
+                                    <span class="font-semibold text-gray-500">"(Post unavailable)"</span>
+                                {% endif %}.
+                            {% endif %}
+                        </p>
+                        <span class="text-xs text-gray-400">{{ notification.date|timesince }} ago</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-8">
+                    <p class="text-gray-500">You have no notifications.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    console.log("=== Notifications page script loaded ===");
+    console.log("jQuery available:", typeof $ !== 'undefined');
+    
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    $(document).ready(function() {
+        console.log("Notifications script ready");
+        // Additional notification handlers can be added here
+    });
+</script>
+{% endblock scripts %}

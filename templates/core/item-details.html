@@ -1,0 +1,338 @@
+{% extends 'partials/base.html' %} {% load static %} {% block content %}
+
+<style>
+    /* Fix daterangepicker z-index issue in modals */
+    .daterangepicker {
+        z-index: 100000 !important;
+    }
+</style>
+
+<div class="main_content">
+    <div class="mcontainer">
+        <div class="bg-white rounded-2xl shadow-sm md:p-8 p-4">
+            <div class="md:flex md:space-x-8">
+                <!-- Item Image -->
+                <div class="md:w-1/2">
+                    <div class="bg-gray-100 rounded-lg h-96 md:h-[500px] flex items-center justify-center overflow-hidden border border-gray-200">
+                        <img src="{{ product.image.url }}" alt="{{ product.title }}" class="w-full h-full object-contain">
+                    </div>
+                </div>
+
+                <!-- Item Details -->
+                <div class="md:w-1/2 mt-6 md:mt-0">
+                    <!-- Title -->
+                    <h1 class="text-3xl font-bold">{{ product.title }}</h1>
+
+                    <!-- Owner and Report button -->
+                    <div class="flex justify-between items-center mt-4">
+                        <!-- Owner -->
+                        <div class="flex items-center space-x-2">
+                            <img src="{{ product.user.profile.image.url }}" alt="{{ product.user.profile.full_name }}" class="w-10 h-10 rounded-full">
+                            <div>
+                                <p class="text-sm text-gray-500">Owner</p>
+                                <a href="{% url 'userauths:profile' product.user.username %}" class="text-lg font-semibold">{{ product.user.profile.full_name }}</a>
+                            </div>
+                        </div>
+                        <!-- Report Button -->
+                        {% if request.user != product.user %}
+                        <a href="#report-modal" uk-toggle class="text-gray-500 hover:text-red-500 hover:underline">Report</a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mt-4 flex items-center text-gray-600">
+                        <ion-icon name="location-outline" class="text-xl mr-2"></ion-icon>
+                        <span>{{ product.location }}</span>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="flex justify-between items-center mt-4">
+                        <div>
+                            <span class="font-semibold">Item Status:</span>
+                            {% if product.status == 'available' %}
+                                <span class="text-green-500 font-bold">Available</span>
+                            {% elif product.status == 'rented' %}
+                                <span class="text-yellow-500 font-bold">Currently Rented</span>
+                            {% else %}
+                                <span class="text-red-500 font-bold">Unavailable</span>
+                            {% endif %}
+                        </div>
+                        {% if request.user != product.user %}
+                            <div>
+                                {% if product.status == 'unavailable' %}
+                                    <a href="#" class="button bg-gray-400 text-white text-center cursor-not-allowed" style="background-color: #9ca3af !important;">
+                                        Unavailable
+                                    </a>
+                                {% else %}
+                                    <a href="#booking-modal" uk-toggle class="button bg-blue-600 text-white text-center">Book Now</a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mt-4">
+                        <h2 class="text-xl font-semibold mb-2">Description</h2>
+                        <p class="text-gray-600">{{ product.description|linebreaks }}</p>
+                    </div>
+
+                    <!-- Rental Rate -->
+                    <div class="mt-4">
+                        <h2 class="text-xl font-semibold mb-2">Rental Rate</h2>
+                        <p class="text-2xl font-bold text-blue-600">RM {{ product.daily_rate|floatformat:2 }} <span class="text-lg font-normal text-gray-500">/ day</span></p>
+                    </div>
+
+                    <!-- Reviews (Placeholder) -->
+                    <div class="mt-4">
+                        <h2 class="text-xl font-semibold mb-4">Reviews ({{ product.reviews.count }})</h2>
+                        <div class="space-y-5">
+                            {% for review in product.reviews.all %}
+                            <div class="flex space-x-3">
+                                <img src="{{ review.reviewer.profile.image.url }}" alt="" class="w-10 h-10 rounded-full">
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-center">
+                                        <a href="{% url 'userauths:profile' review.reviewer.username %}" class="font-semibold">{{ review.reviewer.profile.full_name }}</a>
+                                        <span class="text-sm text-gray-500">{{ review.date|date:"M d, Y" }}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-1 text-yellow-400 mt-1">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= review.rating %}
+                                                <ion-icon name="star"></ion-icon>
+                                            {% else %}
+                                                <ion-icon name="star-outline"></ion-icon>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <p class="mt-2 text-gray-700">{{ review.comment }}</p>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-gray-500">No reviews yet.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Modal -->
+<div id="booking-modal" class="uk-flex-top" uk-modal data-daily-rate="{{ product.daily_rate|floatformat:2 }}">
+    <div class="uk-modal-dialog uk-modal-body uk-margin-auto-vertical rounded-lg">
+        <button class="uk-modal-close-default" type="button" uk-close></button>
+        
+        <h2 class="uk-modal-title text-2xl font-semibold mb-4">Book Rental</h2>
+
+        <div class="space-y-4">
+            <!-- Calendar Input -->
+            <div>
+                <label class="text-sm font-medium">Select Rental Dates</label>
+                <input type="text" id="booking-date-range" class="with-border" placeholder="Select your dates" readonly>
+                <small class="text-red-500 hidden" id="date-error">Please select at least one day.</small>
+            </div>
+
+            <!-- Pricing Information -->
+            <div class="border-t pt-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Daily Rate</span>
+                    <span class="font-semibold">RM {{ product.daily_rate|floatformat:2 }}</span>
+                </div>
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-gray-600">Number of Days</span>
+                    <span id="num-days" class="font-semibold">0</span>
+                </div>
+                <div class="flex justify-between items-center mt-4 text-lg">
+                    <span class="font-bold">Total</span>
+                    <span id="total-price" class="font-bold text-blue-600">RM 0.00</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex space-x-4 mt-6" id="booking-action-buttons">
+                <a href="{% url 'core:messages' %}?user_id={{ product.user.id }}&product_id={{ product.pid }}&draft=item" class="button w-full bg-gray-200 text-gray-700 text-center">Chat with owner</a>
+                <button id="request-rent-btn" class="button w-full bg-blue-600 text-white" type="button">Request for rent</button>
+            </div>
+            <div id="booking-confirmation" class="hidden text-center">
+                <p id="confirmation-message" class="mb-4"></p>
+                <button class="uk-modal-close button bg-blue-600 text-white" type="button">Okay</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Report Modal -->
+<div id="report-modal" class="uk-flex-top" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body uk-margin-auto-vertical rounded-lg">
+        <button class="uk-modal-close-default" type="button" uk-close></button>
+        
+        <!-- Step 1: Select Reason -->
+        <div id="report-step-1">
+            <h2 class="uk-modal-title">Select a Reason</h2>
+            <ul class="uk-list uk-list-divider">
+                <li><a href="#" class="report-reason-option" data-reason="Prohibited Items">Prohibited Items</a></li>
+                <li><a href="#" class="report-reason-option" data-reason="Offensive Items">Offensive Items</a></li>
+                <li><a href="#" class="report-reason-option" data-reason="Potential scam listing">Potential scam listing</a></li>
+                <li><a href="#" class="report-reason-option" data-reason="Intellectual Property (IP) infringement">Intellectual Property (IP) infringement</a></li>
+                <li><a href="#" class="report-reason-option" data-reason="Others">Others</a></li>
+            </ul>
+        </div>
+
+        <!-- Step 2: Description -->
+        <div id="report-step-2" style="display: none;">
+            <h2 id="report-title" class="uk-modal-title"></h2>
+            <form id="report-form">
+                {% csrf_token %}
+                <input type="hidden" name="product_pid" value="{{ product.pid }}">
+                <input type="hidden" id="report-reason-input" name="reason" value="">
+                
+                <div class="uk-margin">
+                    <label class="uk-form-label" for="report-description">Report Description</label>
+                    <div class="uk-form-controls">
+                        <textarea id="report-description" name="description" class="uk-textarea" rows="4" maxlength="200" placeholder="Provide more details (200 characters max)"></textarea>
+                    </div>
+                </div>
+                <div class="uk-text-right">
+                    <button class="button bg-blue-600 text-white" type="submit">Send Report</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 3: Success Message -->
+        <div id="report-step-3" style="display: none;">
+            <h2 class="uk-modal-title text-green-500">Report Sent Successfully</h2>
+            <p>Thank you for your report. We will review the item and take appropriate action. You will be notified of the status.</p>
+            <div class="uk-text-right mt-4">
+                <button class="uk-modal-close button bg-gray-200 text-gray-700" type="button">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.addEventListener('load', function() {
+    // Handle reason selection
+    $('.report-reason-option').on('click', function(e) {
+        e.preventDefault();
+        const reason = $(this).data('reason');
+        $('#report-title').text(reason);
+        $('#report-reason-input').val(reason);
+        $('#report-step-1').hide();
+        $('#report-step-3').hide();
+        $('#report-step-2').show();
+    });
+
+    // Reset modal on close
+    UIkit.util.on('#report-modal', 'hidden', function () {
+        $('#report-step-1').show();
+        $('#report-step-2').hide();
+        $('#report-step-3').hide();
+        $('#report-form')[0].reset();
+    });
+
+    // Handle form submission
+    $('#report-form').on('submit', function(e) {
+        e.preventDefault();
+        $.post("{% url 'core:submit-report' %}", $(this).serialize(), function(response) {            
+            if (response.status === 'success') {
+                $('#report-step-2').hide();
+                $('#report-step-3').show();
+            } else {
+                // Show an error notification if it fails
+                UIkit.notification({ message: response.message, status: 'danger', pos: 'top-right' });
+            }
+        });
+    });
+
+    // Booking Modal Logic
+    const dailyRate = parseFloat($('#booking-modal').attr('data-daily-rate'));
+    let selectedDays = 0;
+    let startDate, endDate;
+
+    // Initialize daterangepicker
+    $('#booking-date-range').daterangepicker({
+        parentEl: '#booking-modal .uk-modal-body',
+        autoUpdateInput: false,
+        minDate: moment(),
+        locale: {
+            cancelLabel: 'Clear'
+        }
+    });
+
+    // Handle date application
+    $('#booking-date-range').on('apply.daterangepicker', function(ev, picker) {
+        startDate = picker.startDate;
+        endDate = picker.endDate;
+        $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+        
+        // Calculate days and total price
+        selectedDays = picker.endDate.diff(picker.startDate, 'days') + 1;
+        const totalPrice = dailyRate * selectedDays;
+
+        $('#num-days').text(selectedDays);
+        $('#total-price').text('RM ' + totalPrice.toFixed(2));
+        $('#date-error').addClass('hidden');
+    });
+
+    // Handle date cancellation
+    $('#booking-date-range').on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+        selectedDays = 0;
+        $('#num-days').text('0');
+        $('#total-price').text('RM 0.00');
+    });
+
+    // Handle "Request for rent" button click
+    $('#request-rent-btn').on('click', function() {
+        if (selectedDays < 1) {
+            $('#date-error').removeClass('hidden');
+        } else {
+            const btn = $(this);
+            btn.prop('disabled', true).text('Sending...');
+    
+            $.ajax({
+                url: "{% url 'core:create-rental-request' %}",
+                method: 'POST',
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+                data: {
+                    'product_pid': '{{ product.pid }}',
+                    'start_date': startDate.format('MM/DD/YYYY'),
+                    'end_date': endDate.format('MM/DD/YYYY'),
+                    'total_days': selectedDays,
+                    'total_price': (dailyRate * selectedDays).toFixed(2)
+                },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        $('#confirmation-message').text(res.message);
+                        $('#booking-action-buttons').addClass('hidden');
+                        $('#booking-confirmation').removeClass('hidden');
+                    } else {
+                        UIkit.notification({ message: res.message || 'An error occurred.', status: 'danger', pos: 'top-right' });
+                        btn.prop('disabled', false).text('Request for rent');
+                    }
+                },
+                error: function() {
+                    UIkit.notification({ message: 'A server error occurred. Please try again.', status: 'danger', pos: 'top-right' });
+                    btn.prop('disabled', false).text('Request for rent');
+                }
+            });
+        }
+    });
+
+    // Reset modal on close
+    UIkit.util.on('#booking-modal', 'hidden', function () {
+        $('#booking-date-range').val('');
+        selectedDays = 0;
+        $('#num-days').text('0');
+        $('#total-price').text('RM 0.00');
+        $('#date-error').addClass('hidden');
+        $('#booking-action-buttons').removeClass('hidden');
+        $('#booking-confirmation').addClass('hidden');
+        $('#request-rent-btn').prop('disabled', false).text('Request for rent');
+    });
+});
+</script>
+{% endblock %}

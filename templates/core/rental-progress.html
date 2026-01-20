@@ -1,0 +1,260 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="main_content">
+    <div class="mcontainer">
+        {% csrf_token %}
+        <div class="bg-white rounded-2xl shadow-sm md:p-8 p-4">
+            <h1 class="text-2xl font-bold mb-6">Rental Progress</h1>
+
+            <!-- Filter Tabs -->
+            <div class="flex space-x-2 mb-6 border-b overflow-x-auto">
+                <button class="px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterTable('all', this)">All</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterTable('pending', this)">Pending</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterTable('ongoing', this)">Ongoing</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterTable('completed', this)">Completed</button>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-gray-500 border-b">
+                            <th class="p-3 font-medium">Product Name</th>
+                            <th class="p-3 font-medium">Renter Name</th>
+                            <th class="p-3 font-medium">Rental Period</th>
+                            <th class="p-3 font-medium">Total Price</th>
+                            <th class="p-3 font-medium">Status</th>
+                            <th class="p-3 font-medium text-center">Handed Over</th>
+                            <th class="p-3 font-medium text-center">Return Confirmed</th>
+                            <th class="p-3 font-medium">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y" id="rental-table-body">
+                        {% for req in rental_requests %}
+                        <tr class="rental-row" data-status="{{ req.status|lower }}" data-request-id="{{ req.rr_id }}">
+                            <td class="p-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-md bg-gray-200 flex-shrink-0 overflow-hidden">
+                                         <img src="{{ req.product.image.url }}" class="w-full h-full object-cover" alt="Product">
+                                    </div>
+                                    <a href="{% url 'core:item-detail' req.product.slug %}" class="font-semibold hover:underline">{{ req.product.title }}</a>
+                                </div>
+                            </td>
+                            <td class="p-3">
+                                <div class="flex items-center space-x-2">
+                                    <img src="{{ req.renter.profile.image.url }}" class="w-8 h-8 rounded-full" alt="Renter">
+                                    <span>{{ req.renter.profile.full_name }}</span>
+                                </div>
+                            </td>
+                            <td class="p-3 text-sm">{{ req.start_date|date:"M d, Y" }} - {{ req.end_date|date:"M d, Y" }}</td>
+                            <td class="p-3 font-semibold">RM {{ req.total_price|floatformat:2 }}</td>
+                            <td class="p-3 status-cell">
+                                {% if req.status == 'Pending' %}
+                                    <span class="bg-yellow-100 text-yellow-600 px-2 py-1 rounded-md text-xs font-bold">Pending</span>
+                                {% elif req.status == 'Approved' %}
+                                    <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-md text-xs font-bold">Approved</span>
+                                {% elif req.status == 'Declined' %}
+                                    <span class="bg-red-100 text-red-600 px-2 py-1 rounded-md text-xs font-bold">Declined</span>
+                                {% elif req.status == 'Paid' %}
+                                    <span class="bg-purple-100 text-purple-600 px-2 py-1 rounded-md text-xs font-bold">Paid</span>
+                                {% elif req.status == 'Ongoing' %}
+                                    <span class="bg-green-100 text-green-600 px-2 py-1 rounded-md text-xs font-bold">Ongoing</span>
+                                {% elif req.status == 'Completed' %}
+                                    <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs font-bold">Completed</span>
+                                {% elif req.status == 'Cancelled' %}
+                                    <span class="bg-red-100 text-red-600 px-2 py-1 rounded-md text-xs font-bold">Cancelled</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-3 text-center">
+                                <input type="checkbox" class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 handed-over-checkbox"
+                                    {% if req.handed_over %}checked disabled{% endif %}
+                                    {% if req.status != 'Paid' and not req.handed_over %}disabled{% endif %}
+                                >
+                            </td>
+                            <td class="p-3 text-center">
+                                <input type="checkbox" class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 returned-checkbox"
+                                    {% if req.returned %}checked disabled{% endif %}
+                                    {% if req.status != 'Ongoing' or not req.returned_confirmed %}disabled{% endif %}
+                                >
+                            </td>
+                            <td class="p-3 action-cell">
+                                {% if req.status == 'Pending' %}
+                                <div class="flex space-x-2">
+                                    <button class="bg-blue-600 text-white px-3 py-1 rounded-md text-xs hover:bg-blue-700 transition action-btn" data-action="approve">Approve</button>
+                                    <button class="bg-red-600 text-white px-3 py-1 rounded-md text-xs hover:bg-red-700 transition action-btn" data-action="decline">Decline</button>
+                                </div>
+                                {% else %}
+                                <a href="#view-details-modal-{{ req.rr_id }}" uk-toggle class="bg-gray-100 text-gray-700 px-4 py-1.5 rounded-md text-sm hover:bg-gray-200 transition whitespace-nowrap">View Details</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center p-6 text-gray-500">You have no rental requests.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+{% for req in rental_requests %}
+    {% include 'partials/rental-details-modal.html' %}
+{% endfor %}
+
+<script>
+    function filterTable(status, btn) { // Visual tab update
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            b.classList.add('text-gray-500');
+        });
+        btn.classList.remove('text-gray-500');
+        btn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+
+        // Row filtering
+        const rows = document.querySelectorAll('.rental-row');
+        rows.forEach(row => {
+            if (status === 'all') {
+                row.style.display = '';
+            } else if (row.dataset.status === status) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle Approve/Decline clicks
+        $('#rental-table-body').on('click', '.action-btn', function() {
+            const btn = $(this);
+            const action = btn.data('action');
+            const row = btn.closest('.rental-row');
+            const requestId = row.data('request-id');
+
+            $.ajax({
+                url: "{% url 'core:manage-rental-request' %}",
+                method: 'POST',
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+                data: {
+                    'request_id': requestId,
+                    'action': action
+                },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        // Update status badge
+                        const statusCell = row.find('.status-cell');
+                        let statusBadge;
+                        if (res.new_status === 'Approved') {
+                            statusBadge = '<span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-md text-xs font-bold">Approved</span>';
+                        } else if (res.new_status === 'Declined') {
+                            statusBadge = '<span class="bg-red-100 text-red-600 px-2 py-1 rounded-md text-xs font-bold">Declined</span>';
+                        }
+                        statusCell.html(statusBadge);
+
+                        // Update action cell
+                        const actionCell = row.find('.action-cell');
+                        actionCell.html('<a href="#view-details-modal-' + requestId + '" uk-toggle class="bg-gray-100 text-gray-700 px-4 py-1.5 rounded-md text-sm hover:bg-gray-200 transition whitespace-nowrap">View Details</a>');
+                        
+                        row.data('status', res.new_status.toLowerCase());
+                        
+                        UIkit.notification({ message: `Request ${res.new_status.toLowerCase()}.`, status: 'success', pos: 'top-right' });
+                    } else {
+                        UIkit.notification({ message: res.message || 'An error occurred.', status: 'danger', pos: 'top-right' });
+                    }
+                },
+                error: function() {
+                    UIkit.notification({ message: 'A server error occurred.', status: 'danger', pos: 'top-right' });
+                }
+            });
+        });
+
+        // Handle Handed Over checkbox
+        $('#rental-table-body').on('change', '.handed-over-checkbox', function() {
+            const checkbox = $(this);
+            const row = checkbox.closest('.rental-row');
+            const requestId = row.data('request-id');
+
+            if (checkbox.is(':checked')) {
+                $.ajax({
+                    url: "{% url 'core:manage-rental-request' %}",
+                    method: 'POST',
+                    headers: { "X-CSRFToken": getCookie("csrftoken") },
+                    data: {
+                        'request_id': requestId,
+                        'action': 'handed_over'
+                    },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            let statusBadge;
+                            let notificationMessage;
+                            // Status remains 'Paid' until renter confirms receipt
+                            if (res.new_status === 'Paid') {
+                                statusBadge = '<span class="bg-purple-100 text-purple-600 px-2 py-1 rounded-md text-xs font-bold">Paid</span>';
+                                notificationMessage = 'Item marked as handed over.'; // "Waiting for renter confirmation." terpaksa comment sebab takleh adjust position"
+                                UIkit.notification({ message: notificationMessage, status: 'success', pos: 'top-right' });
+                            } else if (res.new_status === 'Ongoing') {
+                                // Fallback if logic changes, though currently it stays Paid
+                                statusBadge = '<span class="bg-green-100 text-green-600 px-2 py-1 rounded-md text-xs font-bold">Ongoing</span>';
+                            }
+                            row.find('.status-cell').html(statusBadge);
+                            checkbox.prop('disabled', true);
+                            row.data('status', res.new_status.toLowerCase());
+                        } else {
+                            UIkit.notification({ message: res.message || 'An error occurred.', status: 'danger', pos: 'top-right' });
+                            checkbox.prop('checked', false);
+                        }
+                    },
+                    error: function() {
+                        UIkit.notification({ message: 'A server error occurred.', status: 'danger', pos: 'top-right' });
+                        checkbox.prop('checked', false);
+                    }
+                });
+            }
+        });
+
+        // Handle Returned checkbox
+        $('#rental-table-body').on('change', '.returned-checkbox', function() {
+            const checkbox = $(this);
+            const row = checkbox.closest('.rental-row');
+            const requestId = row.data('request-id');
+
+            if (checkbox.is(':checked')) {
+                $.ajax({
+                    url: "{% url 'core:manage-rental-request' %}",
+                    method: 'POST',
+                    headers: { "X-CSRFToken": getCookie("csrftoken") },
+                    data: {
+                        'request_id': requestId,
+                        'action': 'returned'
+                    },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            row.find('.status-cell').html('<span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs font-bold">Completed</span>');
+                            checkbox.prop('disabled', true);
+                            row.data('status', 'completed');
+                            UIkit.notification({ message: 'Rental marked as completed.', status: 'success', pos: 'top-right' });
+                        } else {
+                            UIkit.notification({ message: res.message || 'An error occurred.', status: 'danger', pos: 'top-right' });
+                            checkbox.prop('checked', false);
+                        }
+                    },
+                    error: function() {
+                        UIkit.notification({ message: 'A server error occurred.', status: 'danger', pos: 'top-right' });
+                        checkbox.prop('checked', false);
+                    }
+                });
+            }
+        });
+    });
+</script>
+
+{% endblock %}

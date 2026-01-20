@@ -1,0 +1,127 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main_content">
+    <div class="mcontainer">
+        <div class="bg-white rounded-2xl shadow-sm md:p-8 p-4 max-w-2xl mx-auto">
+            
+            <div id="invoice-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold">Invoice</h1>
+                    <div id="status-badge-container">
+                        {% if rental_request.status == 'Approved' %}
+                            <span class="bg-yellow-100 text-yellow-600 px-3 py-1.5 rounded-md text-sm font-bold">Awaiting Payment</span>
+                        {% elif rental_request.status == 'Paid' or rental_request.status == 'Ongoing' or rental_request.status == 'Completed' %}
+                            <span class="bg-green-100 text-green-600 px-3 py-1.5 rounded-md text-sm font-bold">Paid</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Invoice Details -->
+                <div class="space-y-4 border-b pb-6">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Invoice Ref:</span>
+                        <span class="font-semibold">{{ rental_request.rr_id }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Invoice Date:</span>
+                        <span class="font-semibold">{{ rental_request.date|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Renter:</span>
+                        <span class="font-semibold">{{ rental_request.renter.profile.full_name }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Owner:</span>
+                        <span class="font-semibold">{{ rental_request.owner.profile.full_name }}</span>
+                    </div>
+                </div>
+
+                <!-- Item Details -->
+                <div class="mt-6 space-y-4">
+                    <h2 class="text-lg font-semibold">Rental Summary</h2>
+                    <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <img src="{{ rental_request.product.image.url }}" class="w-20 h-20 rounded-md object-cover" alt="">
+                        <div class="flex-1">
+                            <p class="font-bold text-lg">{{ rental_request.product.title }}</p>
+                            <p class="text-sm text-gray-500">{{ rental_request.start_date|date:"M d, Y" }} - {{ rental_request.end_date|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 border-t pt-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Daily Rate</span>
+                            <span>RM {{ rental_request.product.daily_rate|floatformat:2 }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Total Days</span>
+                            <span>{{ rental_request.total_days }}</span>
+                        </div>
+                        <div class="flex justify-between text-xl font-bold mt-4">
+                            <span>Total Price</span>
+                            <span class="text-blue-600">RM {{ rental_request.total_price|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Confirmation Message -->
+            <div id="payment-success-message" class="hidden text-center p-6 bg-green-50 rounded-lg mt-6">
+                <ion-icon name="checkmark-circle-outline" class="text-5xl text-green-500 mx-auto"></ion-icon>
+                <h3 class="text-xl font-semibold mt-4">Payment Successful!</h3>
+                <p class="text-gray-600 mt-2">Please wait for the owner to hand over the item.</p>
+            </div>
+
+            <!-- Action Button -->
+            {% if rental_request.status == 'Approved' and request.user == rental_request.renter %}
+            <div class="mt-8 text-center" id="payment-button-container">
+                <button id="confirm-payment-btn" class="button bg-blue-600 text-white px-8 py-2.5 rounded-lg text-base font-semibold">
+                    Confirm Payment
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentBtn = document.getElementById('confirm-payment-btn');
+    if (paymentBtn) {
+        paymentBtn.addEventListener('click', function() {
+            const btn = this;
+            const rentalRequestId = '{{ rental_request.rr_id }}';
+            
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            $.ajax({
+                url: `/confirm-payment/${rentalRequestId}/`,
+                method: 'POST',
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        document.getElementById('payment-button-container').classList.add('hidden');
+                        document.getElementById('payment-success-message').classList.remove('hidden');
+                        const statusContainer = document.getElementById('status-badge-container');
+                        statusContainer.innerHTML = '<span class="bg-green-100 text-green-600 px-3 py-1.5 rounded-md text-sm font-bold">Paid</span>';
+                        UIkit.notification({ message: res.message, status: 'success', pos: 'top-right' });
+                    } else {
+                        UIkit.notification({ message: res.message || 'An error occurred.', status: 'danger', pos: 'top-right' });
+                        btn.disabled = false;
+                        btn.textContent = 'Confirm Payment';
+                    }
+                },
+                error: function() {
+                    UIkit.notification({ message: 'A server error occurred. Please try again.', status: 'danger', pos: 'top-right' });
+                    btn.disabled = false;
+                    btn.textContent = 'Confirm Payment';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

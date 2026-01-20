@@ -1,0 +1,255 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="main_content">
+    <div class="mcontainer">
+        <div class="bg-white rounded-2xl shadow-sm md:p-8 p-4">
+            <h1 class="text-2xl font-bold mb-6">My Rentals</h1>
+
+            <!-- Filter Tabs -->
+            <div class="flex space-x-2 mb-6 border-b overflow-x-auto">
+                <button class="px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterRentals('all', this)">All</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterRentals('approved', this)">To Pay</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterRentals('paid', this)">To Receive</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterRentals('ongoing', this)">Ongoing</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterRentals('completed', this)">Completed</button>
+                <button class="px-4 py-2 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none tab-btn whitespace-nowrap" onclick="filterRentals('cancelled', this)">Cancelled</button>
+            </div>
+
+            <!-- Rental Cards Container -->
+            <div class="space-y-4">
+                {% for req in rental_requests %}
+                <div class="card p-4 rental-card" data-status="{{ req.status|lower }}">
+                    <div class="flex flex-col md:flex-row md:space-x-4">
+                        <!-- Item Image -->
+                        <div class="w-full md:w-48 h-32 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden mb-4 md:mb-0">
+                            <img src="{{ req.product.image.url }}" class="w-full h-full object-cover" alt="{{ req.product.title }}">
+                        </div>
+
+                        <!-- Content -->
+                        <div class="flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start">
+                                    <h3 class="text-lg font-bold text-gray-800">
+                                        <a href="{% url 'core:item-detail' req.product.slug %}" class="hover:underline">{{ req.product.title }}</a>
+                                    </h3>
+                                    <!-- Status Badge -->
+                                    {% if req.status == 'Pending' %}
+                                        <span class="bg-yellow-100 text-yellow-600 px-2 py-1 rounded-md text-xs font-bold">Pending</span>
+                                    {% elif req.status == 'Approved' %}
+                                        <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded-md text-xs font-bold">Approved</span>
+                                    {% elif req.status == 'Declined' %}
+                                        <span class="bg-red-100 text-red-600 px-2 py-1 rounded-md text-xs font-bold">Declined</span>
+                                    {% elif req.status == 'Paid' %}
+                                        <span class="bg-purple-100 text-purple-600 px-2 py-1 rounded-md text-xs font-bold">Paid</span>
+                                    {% elif req.status == 'Ongoing' %}
+                                        <span class="bg-green-100 text-green-600 px-2 py-1 rounded-md text-xs font-bold">Ongoing</span>
+                                    {% elif req.status == 'Completed' %}
+                                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs font-bold">Completed</span>
+                                    {% elif req.status == 'Cancelled' %}
+                                        <span class="bg-red-100 text-red-600 px-2 py-1 rounded-md text-xs font-bold">Cancelled</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <p class="text-sm text-gray-500 mt-1">Owner: <a href="{% url 'userauths:profile' req.owner.username %}" class="font-semibold text-blue-600">{{ req.owner.profile.full_name }}</a></p>
+                                <p class="text-sm text-gray-600 mt-2">
+                                    <ion-icon name="calendar-outline" class="align-middle mr-1"></ion-icon>
+                                    {{ req.start_date|date:"M d, Y" }} - {{ req.end_date|date:"M d, Y" }}
+                                </p>
+                                <p class="text-md font-bold text-gray-800 mt-2">Total: RM {{ req.total_price|floatformat:2 }}</p>
+                            </div>
+
+                            <!-- Mutual Confirmation Checkboxes -->
+                            <div class="mt-3 space-y-2">
+                                {% if req.status == 'Paid' or req.status == 'Ongoing' %}
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="received-check-{{ req.rr_id }}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 received-checkbox" 
+                                        data-request-id="{{ req.rr_id }}"
+                                        {% if req.received %}checked disabled{% endif %}
+                                        {% if not req.handed_over %}disabled{% endif %}>
+                                    <label for="received-check-{{ req.rr_id }}" class="ml-2 text-sm text-gray-700">Item Received</label>
+                                </div>
+                                {% endif %}
+                                {% if req.status == 'Ongoing' %}
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="returned-check-{{ req.rr_id }}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 returned-confirmed-checkbox"
+                                        data-request-id="{{ req.rr_id }}"
+                                        {% if req.returned_confirmed %}checked disabled{% endif %}>
+                                    <label for="returned-check-{{ req.rr_id }}" class="ml-2 text-sm text-gray-700">Item Returned</label>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="mt-4 flex justify-end">
+                                {% if req.status == 'Approved' %}
+                                    <a href="{% url 'core:invoice' req.rr_id %}" class="button bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm" style="background-color: #2563eb !important;">View Invoice</a>
+                                {% elif req.status == 'Paid' %}
+                                    <a href="{% url 'core:invoice' req.rr_id %}" class="button bg-green-600 text-white px-4 py-1.5 rounded-md text-sm" style="background-color: #059669 !important;">View Invoice</a>
+                                {% elif req.status == 'Ongoing' %}
+                                    <a href="#view-details-modal-{{ req.rr_id }}" uk-toggle class="button bg-gray-200 text-gray-700 px-4 py-1.5 rounded-md text-sm" style="background-color: #e5e7eb !important; color: #374151 !important;">View Details</a>
+                                {% elif req.status == 'Completed' %}
+                                    <div class="flex space-x-2">
+                                        {% if not req.review %}
+                                        <a href="#rate-item-offcanvas-{{ req.rr_id }}" uk-toggle class="button bg-yellow-500 text-white px-4 py-1.5 rounded-md text-sm" style="background-color: #f59e0b !important;">Rate Item</a>
+                                        {% else %}
+                                        <button class="button bg-gray-200 text-gray-500 px-4 py-1.5 rounded-md text-sm cursor-not-allowed" disabled style="background-color: #e5e7eb !important; color: #6b7280 !important;">Rated</button>
+                                        {% endif %}
+                                        <a href="{% url 'core:item-detail' req.product.slug %}" class="button bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm" style="background-color: #2563eb !important;">Rent Again</a>
+                                    </div>
+                                {% elif req.status == 'Cancelled' %}
+                                    <a href="#view-details-modal-{{ req.rr_id }}" uk-toggle class="button bg-gray-200 text-gray-700 px-4 py-1.5 rounded-md text-sm" style="background-color: #e5e7eb !important; color: #374151 !important;">View Details</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-10">
+                    <div class="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <ion-icon name="basket-outline" class="text-2xl text-gray-500"></ion-icon>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">No rentals yet</h3>
+                    <p class="text-gray-500 mt-1">You have no rental records yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+{% for req in rental_requests %}
+    {% include 'partials/rental-details-modal.html' %}
+{% endfor %}
+
+<!-- Rate Item Offcanvases -->
+{% for req in rental_requests %}
+    {% if req.status == 'Completed' and not req.review %}
+        {% include 'partials/rate_item_offcanvas.html' %}
+    {% endif %}
+{% endfor %}
+
+<script>
+    function filterRentals(status, btn) {
+        // Update Tab Styles
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            b.classList.add('text-gray-500');
+        });
+        btn.classList.remove('text-gray-500');
+        btn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+
+        // Filter Cards
+        const cards = document.querySelectorAll('.rental-card');
+        cards.forEach(card => {
+            if (status === 'all' || card.dataset.status === status) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const starRatings = document.querySelectorAll('.star-rating');
+
+        starRatings.forEach(ratingContainer => {
+            const stars = ratingContainer.querySelectorAll('.star');
+            const requestId = ratingContainer.dataset.requestId;
+            const ratingInput = document.getElementById(`rating-input-${requestId}`);
+            const submitBtn = document.getElementById(`submit-review-btn-${requestId}`);
+
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    const value = this.dataset.value;
+                    ratingInput.value = value;
+                    submitBtn.disabled = false;
+
+                    // Update star colors
+                    stars.forEach(s => {
+                        if (s.dataset.value <= value) {
+                            s.classList.add('text-yellow-400');
+                            s.classList.remove('text-gray-300');
+                        } else {
+                            s.classList.remove('text-yellow-400');
+                            s.classList.add('text-gray-300');
+                        }
+                    });
+                });
+            });
+        });
+
+        // Handle Item Received Checkbox
+        $('.received-checkbox').on('change', function() {
+            const checkbox = $(this);
+            const requestId = checkbox.data('request-id');
+            const card = checkbox.closest('.rental-card');
+
+            if (checkbox.is(':checked')) {
+                $.ajax({
+                    url: "{% url 'core:manage-rental-request' %}",
+                    method: 'POST',
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                    data: {
+                        'request_id': requestId,
+                        'action': 'received'
+                    },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            UIkit.notification({ message: 'Item received confirmed.', status: 'success', pos: 'top-right' });
+                            checkbox.prop('disabled', true);
+                            if (res.new_status === 'Ongoing') {
+                                setTimeout(function(){ location.reload(); }, 1000);
+                            }
+                        } else {
+                            UIkit.notification({ message: res.message || 'An error occurred.', status: 'danger', pos: 'top-right' });
+                            checkbox.prop('checked', false);
+                        }
+                    },
+                    error: function() {
+                        UIkit.notification({ message: 'A server error occurred.', status: 'danger', pos: 'top-right' });
+                        checkbox.prop('checked', false);
+                    }
+                });
+            }
+        });
+
+        // Handle Item Returned Checkbox
+        $('.returned-confirmed-checkbox').on('change', function() {
+            const checkbox = $(this);
+            const requestId = checkbox.data('request-id');
+
+            if (checkbox.is(':checked')) {
+                $.ajax({
+                    url: "{% url 'core:manage-rental-request' %}",
+                    method: 'POST',
+                    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                    data: {
+                        'request_id': requestId,
+                        'action': 'returned_confirmed'
+                    },
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            UIkit.notification({ message: 'Return marked.', status: 'success', pos: 'top-right' });
+                            checkbox.prop('disabled', true);
+                        } else {
+                            UIkit.notification({ message: res.message || 'An error occurred.', status: 'danger', pos: 'top-right' });
+                            checkbox.prop('checked', false);
+                        }
+                    },
+                    error: function() {
+                        UIkit.notification({ message: 'A server error occurred.', status: 'danger', pos: 'top-right' });
+                        checkbox.prop('checked', false);
+                    }
+                });
+            }
+        });
+    });
+</script>
+
+{% endblock %}

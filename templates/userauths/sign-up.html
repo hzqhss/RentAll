@@ -1,0 +1,280 @@
+{% comment %} <form action="" method="POST">
+    {% csrf_token %}
+    {{banana.as_p}}
+    <button type="submit">Create Account</button>
+</form> {% endcomment %}
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Favicon -->
+    <link href="{% static 'assets/images/logo-only.png' %}" rel="icon" type="image/png">
+
+    <!-- Basic Page Needs
+        ================================================== -->
+    <title>RentAll</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Socialite is - Professional A unique and beautiful collection of UI elements">
+
+    <!-- icons
+    ================================================== -->
+    <link rel="stylesheet" href="{% static 'assets/css/icons.css' %}">
+
+    <!-- CSS 
+    ================================================== -->
+    <link rel="stylesheet" href="{% static 'assets/css/uikit.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f0f2f5;
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        .main-wrapper {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .left-panel {
+            width: 750px;
+            min-width: 320px;
+            height: 100vh;
+            background: #62A1C6 url("{% static 'assets/images/welcome_background.png' %}") no-repeat center center;
+            background-size: cover;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            box-sizing: border-box;
+        }    
+        
+        .welcome-text {
+            position: absolute;
+            left: 0; 
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .welcome-text h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+        
+        .welcome-text p {
+            font-size: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #ffffff;
+        }
+        
+        .right-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            overflow-y: auto;
+            height: 100vh;
+        }
+        
+        @media (max-width: 900px) {
+            .main-wrapper {
+                flex-direction: column;
+            }
+            .left-panel {
+                width: 100%;
+                height: 300px;
+            }
+            .welcome-text h1 {
+                font-size: 2.5rem;
+            }
+            .welcome-text p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="main-wrapper">
+        <!-- Blue Left Panel -->
+        <div class="left-panel">
+            
+            <div class="welcome-text">
+                <h1>Welcome<br>to RentAll</h1>
+                <p>
+                    Discover a smarter way to access essentials and earn from your own belongings, all within our trusted community
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Content - Original Sign Up Section -->
+        <div class="right-content">
+            <div style="max-width: 500px; width: 100%;">
+                <div class="lg:mt-0 lg:w-96 md:w-1/2 sm:w-2/3 w-full" style="max-width: 100%;">
+                    <!-- Form Errors -->
+                    {% if form.errors %}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong class="font-bold">{{form.errors}}</strong>
+                        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
+                          <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                        </span>
+                      </div> 
+                    {% endif %}
+
+                    {% if messages %}
+
+                    {% for message in messages %}
+                    <div class="bg-red-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                        <strong class="font-bold">{{message}}</strong>
+                        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
+                          <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                        </span>
+                      </div>
+
+                    {% endfor %}
+                    {% endif %}
+
+                    {% comment %} refer view.py dekat loginview {% endcomment %}
+                    <form class="p-6 space-y-4 relative bg-white shadow-lg rounded-lg" method="POST" action="{% url "userauths:sign-in" %}">
+                        {% csrf_token %}
+                        <div class="lg:text-xl text-lg text-gray-900 font-semibold mb-1 text-center block" style="margin-top: 0 !important;"> Log In</div>
+                        <input type="email" name="email" placeholder="IIUM Email Address" class="with-border">
+                        <input type="password" name="password" placeholder="Password" class="with-border">
+                        <button type="submit" class="bg-blue-600 font-semibold p-3 rounded-md text-center text-white w-full">
+                            Log In
+                        </button>
+                        <hr class="pb-3.5">
+                        <div class="flex">
+                            <a href="#register" type="button" class="bg-green-600 hover:bg-green-500 hover:text-white font-semibold py-3 px-5 rounded-md text-center text-white mx-auto" uk-toggle>
+                                Create New Account
+                            </a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- This is the modal -->
+    <div id="register" uk-modal>
+        <div class="uk-modal-dialog uk-modal-body rounded-xl shadow-2xl p-0 lg:w-5/12">
+            <button class="uk-modal-close-default p-3 bg-gray-100 rounded-full m-3" type="button" uk-close></button>
+            <div class="border-b px-7 py-5">
+                <div class="lg:text-2xl text-xl font-semibold mb-1"> Sign Up</div>
+                <div class="text-base text-gray-600"> It's quick and easy.</div>
+            </div>
+            <form class="p-7 space-y-5" method="POST">
+                {% csrf_token %}
+                <div class="grid lg:grid-cols-2 gap-5">
+                    {{form.full_name}}
+                    {{form.username}}
+                </div>
+                {{form.email}}
+                {{form.password1}}
+                {{form.password2}}
+
+                <div class="grid lg:grid-cols-2 gap-3">
+                    <div>
+                        <label class="mb-2"> Gender </label>
+                            {{form.gender}}
+                        </select>
+
+                    </div>
+                    <div>
+                        <label class="mb-2"> Phone: optional  </label>
+                            {{form.phone}}
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 pt-3">By clicking Sign Up, you agree to our
+                    <a href="#" class="text-blue-500">Terms</a>,
+                    <a href="#">Data Policy</a> and
+                    <a href="#">Cookies Policy</a>. You may receive SMS Notifications from us and can opt out any time.
+                </p>
+                <div class="flex">
+                    <button type="submit" class="bg-blue-600 font-semibold mx-auto px-10 py-3 rounded-md text-center text-white">Sign Up</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- For Night mode -->
+    <script>
+        (function(window, document, undefined) {
+            'use strict';
+            if (!('localStorage' in window)) return;
+            var nightMode = localStorage.getItem('gmtNightMode');
+            if (nightMode) {
+                document.documentElement.className += ' night-mode';
+            }
+        })(window, document);
+
+        (function(window, document, undefined) {
+
+            'use strict';
+
+            // Feature test
+            if (!('localStorage' in window)) return;
+
+            // Get our newly insert toggle
+            var nightMode = document.querySelector('#night-mode');
+            if (!nightMode) return;
+
+            // When clicked, toggle night mode on or off
+            nightMode.addEventListener('click', function(event) {
+                event.preventDefault();
+                document.documentElement.classList.toggle('dark');
+                if (document.documentElement.classList.contains('dark')) {
+                    localStorage.setItem('gmtNightMode', true);
+                    return;
+                }
+                localStorage.removeItem('gmtNightMode');
+            }, false);
+
+        })(window, document);
+    </script>
+
+    <!-- Javascript
+    ================================================== -->
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/ionicons@5.2.3/dist/ionicons.js"></script>
+    <script src="{% static 'assets/js/tippy.all.min.js' %}"></script>
+    <script src="{% static 'assets/js/uikit.js' %}"></script>
+    <script src="{% static 'assets/js/simplebar.js' %}"></script>
+    <script src="{% static 'assets/js/custom.js' %}"></script>
+    <script src="{% static 'assets/js/bootstrap-select.min.js' %}"></script>
+
+</body>
+
+</html>

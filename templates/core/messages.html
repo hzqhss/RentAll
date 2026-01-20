@@ -1,0 +1,392 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main_content">
+    <div class="mcontainer">
+        <div class="flex border rounded-2xl shadow-sm" style="height: calc(100vh - 100px);">
+
+            <!-- Left Panel: Conversations List -->
+            <div class="w-1/3 border-r bg-white rounded-l-2xl">
+                <div class="p-4 border-b">
+                    <h1 class="text-2xl font-bold">Messages</h1>
+                </div>
+                <div class="contact-list" style="max-height: calc(100vh - 175px); overflow-y: auto;">
+                    {% if conversations %}
+                        {% for conv in conversations %}
+                            <a href="{% url 'core:messages' %}?user_id={{ conv.user.id }}" class="conversation-item p-4 flex items-center space-x-4 hover:bg-gray-50 {% if active_chat_user and active_chat_user.id == conv.user.id %}bg-gray-100{% endif %}" data-user-id="{{ conv.user.id }}" data-username="{{ conv.user.username }}">
+                                <div class="relative flex-shrink-0">
+                                    <img src="{{ conv.user.profile.image.url }}" alt="" class="w-12 h-12 rounded-full">
+                                    {% if conv.unread_count > 0 %}
+                                        <span class="absolute bottom-0 right-0 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{{ conv.unread_count }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-lg truncate">{{ conv.user.profile.full_name }}</p>
+                                    <p class="text-sm text-gray-500 truncate">
+                                        {% if conv.last_message %}
+                                            {% if conv.last_message.sender == request.user %}You: {% endif %}
+                                            {% if conv.last_message.message %}{{ conv.last_message.message }}{% else %}Photo{% endif %}
+                                        {% else %}
+                                            Start a conversation
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                {% if conv.last_message %}
+                                <span class="text-xs text-gray-400 self-start">{{ conv.last_message.date|timesince }} ago</span>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-6 text-center text-gray-500">
+                            You have no messages yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Right Panel: Chat Area -->
+            <div class="w-2/3 bg-white rounded-r-2xl flex flex-col">
+                <div id="chat-welcome" class="h-full flex flex-col items-center justify-center text-center {% if active_chat_user %}hidden{% endif %}">
+                    <ion-icon name="chatbubbles-outline" class="text-8xl text-gray-300"></ion-icon>
+                    <h2 class="text-2xl font-semibold mt-4">Your Messages</h2>
+                    <p class="text-gray-500 mt-2">Select a conversation to start chatting.</p>
+                </div>
+
+                <div id="chat-area" class="h-full flex flex-col {% if not active_chat_user %}hidden{% endif %}">
+                    <!-- Chat Header -->
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <a id="chat-header-link" href="{% if active_chat_user %}{% url 'userauths:profile' active_chat_user.username %}{% else %}#{% endif %}" class="flex items-center space-x-4">
+                            <img id="chat-header-img" src="{% if active_chat_user %}{{ active_chat_user.profile.image.url }}{% endif %}" alt="" class="w-10 h-10 rounded-full">
+                            <div>
+                                <p id="chat-header-name" class="font-semibold text-lg">{% if active_chat_user %}{{ active_chat_user.profile.full_name }}{% endif %}</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Messages -->
+                    <div id="message-list" class="flex-1 p-6 space-y-6 overflow-y-auto">
+                        <!-- Messages will be loaded here by JS -->
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div id="image-preview-container" class="p-4 border-t bg-gray-50 hidden">
+                        <!-- Image preview will be inserted here by JS -->
+                    </div>
+
+                    <!-- Draft Item Preview (Preloaded from URL) -->
+                    <div id="draft-item-preview-container" class="{% if not draft_product %}hidden{% endif %} p-4 border-t bg-gray-50 relative">
+                        {% if draft_product %}
+                        <input type="hidden" id="draft-product-id" value="{{ draft_product.pid }}">
+                        <div class="flex items-center space-x-3 bg-white p-2 rounded-lg border shadow-sm max-w-md">
+                            <img src="{{ draft_product.image.url }}" class="w-12 h-12 rounded object-cover">
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-sm truncate">{{ draft_product.title }}</p>
+                                <p class="text-xs text-blue-600 font-bold">RM {{ draft_product.daily_rate }} / day</p>
+                            </div>
+                            <button type="button" id="remove-draft-item" class="text-gray-400 hover:text-red-500"><ion-icon name="close-circle" class="text-xl"></ion-icon></button>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Message Input -->
+                    <div class="p-4 border-t bg-gray-50 rounded-br-2xl">
+                        <form id="send-message-form" method="POST" class="flex items-center space-x-3">
+                            <input type="hidden" name="receiver_id" id="receiver-id-input" value="{% if active_chat_user %}{{ active_chat_user.id }}{% endif %}">
+                            <div class="flex-1 flex items-center">
+                                <label for="chat-image-upload" class="cursor-pointer mr-3 flex items-center justify-center h-10 w-10">
+                                    <ion-icon name="image-outline" class="text-2xl text-gray-500 hover:text-blue-500 leading-none"></ion-icon>
+                                </label>
+                                <input type="file" id="chat-image-upload" name="image" class="hidden" accept="image/*">
+                                <input type="text" id="chat-message-input" name="message" placeholder="Type a message..." class="flex-1 with-border rounded-full px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <button type="submit" id="send-msg-btn" class="button bg-blue-600 text-white rounded-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <ion-icon name="send-outline" class="text-xl"></ion-icon>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    const currentUserId = "{{ request.user.id }}";
+    let activeUserId = $('#receiver-id-input').val();
+    const initialChatUserId = "{{ active_chat_user.id|default:'' }}";    
+
+    function openChat(userId) {
+        const conversationItem = $(`.conversation-item[data-user-id="${userId}"]`);
+        if (conversationItem.length) {
+            // Remove active class from other items and add to this one
+            $('.conversation-item').removeClass('bg-gray-100');
+            conversationItem.addClass('bg-gray-100');
+
+            // Trigger the click event
+            conversationItem.trigger('click');
+        }
+    }
+
+    // If there's a user to chat with on page load, open their chat
+    if (initialChatUserId) {
+        openChat(initialChatUserId);
+        fetchMessages(initialChatUserId);
+    }
+
+    $('.conversation-item').on('click', function(e) {
+        e.preventDefault();
+        
+        $('.conversation-item').removeClass('bg-gray-100');
+        $(this).addClass('bg-gray-100');
+        $('#chat-welcome').hide();
+        $('#chat-area').removeClass('hidden').addClass('flex');
+
+        activeUserId = $(this).data('user-id');
+        const fullName = $(this).find('p.font-semibold').text();
+        const username = $(this).data('username');
+        const profileImg = $(this).find('img').attr('src');
+        const profileUrl = `/user/profile/${username}/`;
+
+        $('#chat-header-name').text(fullName);
+        $('#chat-header-img').attr('src', profileImg);
+        $('#chat-header-link').attr('href', profileUrl);
+        $('#receiver-id-input').val(activeUserId);
+
+        // Update unread count immediately
+        const unreadBadge = $(this).find('.absolute');
+        if (unreadBadge.length) {
+            const unreadCount = parseInt(unreadBadge.text().trim());
+            const globalBadge = $('#global-unread-messages-count');
+            
+            if (globalBadge.length && !isNaN(unreadCount)) {
+                let globalCount = parseInt(globalBadge.text().trim());
+                if (!isNaN(globalCount)) {
+                    globalCount -= unreadCount;
+                    if (globalCount <= 0) {
+                        globalBadge.remove();
+                    } else {
+                        globalBadge.text(globalCount);
+                    }
+                }
+            }
+            unreadBadge.remove();
+        }
+
+        fetchMessages(activeUserId);
+    });
+
+    function fetchMessages(userId) {
+        const messageList = $('#message-list');
+        messageList.html('<p class="text-center">Loading...</p>');
+
+        $.ajax({
+            url: `/api/get-messages/${userId}/`,
+            method: 'GET',
+            success: function(data) {
+                messageList.html('');
+                data.messages.forEach(msg => {
+                    const messageHtml = createMessageHtml(msg);
+                    messageList.append(messageHtml);
+                });
+                messageList.scrollTop(messageList[0].scrollHeight);
+            },
+            error: function() {
+                messageList.html('<p class="text-center text-red-500">Could not load messages.</p>');
+            }
+        });
+    }
+
+    function createMessageHtml(msg) {
+        const isSender = msg.sender_id == currentUserId;
+        const alignClass = isSender ? 'justify-end' : 'justify-start';
+        const wrapperAlign = isSender ? 'items-end' : 'items-start';
+        const bubbleClass = isSender ? 'bg-blue-500 text-white' : 'bg-gray-200';
+        const timeAgo = msg.date;
+
+        let messageContent = '';
+        if (msg.message) {
+            messageContent += `<p class="text-sm">${msg.message}</p>`;
+        }
+        if (msg.image) {
+            messageContent += `<img src="${msg.image}" class="mt-2 rounded-lg max-w-xs">`;
+        }
+        
+        if (msg.message_type === 'rental_card' && msg.rental_request) {
+            messageContent += `
+                <a href="/item/${msg.rental_request.slug}/" class="block mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm max-w-xs hover:shadow-md transition text-left no-underline group">
+                    <img src="${msg.rental_request.image}" class="w-full h-32 object-cover">
+                    <div class="p-3">
+                        <h4 class="font-bold text-gray-800 truncate group-hover:text-blue-600">${msg.rental_request.title}</h4>
+                        <p class="text-xs text-gray-500 mt-1">
+                            ${msg.rental_request.start_date} - ${msg.rental_request.end_date}
+                        </p>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-blue-600 font-bold text-sm">RM ${msg.rental_request.total_price}</span>
+                            <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">View Item</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        }
+        
+        if (msg.product) {
+            messageContent += `
+                <a href="/item/${msg.product.slug}/" class="block mt-2 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm max-w-xs hover:shadow-md transition text-left no-underline group">
+                    <img src="${msg.product.image}" class="w-full h-32 object-cover">
+                    <div class="p-3">
+                        <h4 class="font-bold text-gray-800 truncate group-hover:text-blue-600">${msg.product.title}</h4>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-blue-600 font-bold text-sm">RM ${msg.product.daily_rate} / day</span>
+                            <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">View Item</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        }
+
+        let seenIndicator = '';
+        if (isSender && msg.is_read) {
+            seenIndicator = '<span class="text-xs text-gray-400 mt-1">Seen</span>';
+        }
+
+        return `
+            <div class="flex ${alignClass}">
+                <div class="flex flex-col ${wrapperAlign}" style="max-width: 75%;">
+                    <div class="${bubbleClass} px-4 py-2 rounded-lg shadow-sm break-words">
+                        ${messageContent}
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1 ${isSender ? 'text-right' : ''}">${timeAgo}</div>
+                    ${isSender ? `<div class="text-xs text-gray-400 text-right">${seenIndicator}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    function toggleSendButton() {
+        const message = $('#chat-message-input').val().trim();
+        const image = $('#chat-image-upload')[0].files.length > 0;
+        
+        if (message || image) {
+            $('#send-msg-btn').prop('disabled', false);
+        } else {
+            $('#send-msg-btn').prop('disabled', true);
+        }
+    }
+
+    $('#chat-image-upload').on('change', function(e) {
+        const file = e.target.files[0];
+        const previewContainer = $('#image-preview-container');
+
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                UIkit.notification({ message: 'Image size should not exceed 5MB.', status: 'danger' });
+                $(this).val(''); // Clear the input
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                previewContainer.html(`
+                    <div class="relative inline-block">
+                        <img src="${event.target.result}" class="h-24 rounded-lg">
+                        <button type="button" id="remove-image-preview" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 shadow-md flex items-center justify-center h-6 w-6">
+                            <ion-icon name="close" class="text-lg"></ion-icon>
+                        </button>
+                    </div>
+                `);
+                previewContainer.removeClass('hidden');
+            }
+            reader.readAsDataURL(file);
+        }
+        toggleSendButton();
+    });
+
+    // Handle removing the image preview
+    $(document).on('click', '#remove-image-preview', function() {
+        $('#chat-image-upload').val('');
+        $('#image-preview-container').addClass('hidden').html('');
+        toggleSendButton();
+    });
+
+    // Handle removing the draft item preview
+    $(document).on('click', '#remove-draft-item', function() {
+        $('#draft-item-preview-container').addClass('hidden').html('');
+        // Note: We don't toggle send button here because removing draft doesn't affect text/image input validity
+    });
+
+    $('#chat-message-input').on('input', function() {
+        toggleSendButton();
+    });
+
+    $('#send-message-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const messageInput = $('#chat-message-input');
+        const imageInput = $('#chat-image-upload')[0];
+        const draftProductId = $('#draft-product-id').val();
+
+        if (draftProductId && $('#draft-item-preview-container').is(':visible')) {
+            formData.append('product_id', draftProductId);
+        }
+
+        if (!messageInput.val().trim() && (!imageInput.files || imageInput.files.length === 0) && !formData.has('product_id')) {
+            return;
+        }
+
+        $.ajax({
+            url: "{% url 'core:send_message_api' %}",
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: { "X-CSRFToken": getCookie("csrftoken") },
+            success: function(data) {
+                const messageHtml = createMessageHtml(data.message);
+                $('#message-list').append(messageHtml);
+                $('#message-list').scrollTop($('#message-list')[0].scrollHeight);
+
+                messageInput.val('');
+                imageInput.value = '';
+                $('#image-preview-container').addClass('hidden').html('');
+                $('#draft-item-preview-container').addClass('hidden').html(''); // Clear draft after sending
+                toggleSendButton();
+
+                // Update conversation list on the left
+                const receiverId = formData.get('receiver_id');
+                const conversationItem = $(`.conversation-item[data-user-id="${receiverId}"]`);
+
+                if (conversationItem.length) {
+                    // Update last message preview
+                    const lastMessageElement = conversationItem.find('p.text-sm.text-gray-500.truncate');
+                    let lastMessageText = "You: ";
+                    if (data.message.message) {
+                        lastMessageText += data.message.message;
+                    } else if (data.message.image) {
+                        lastMessageText += "Photo";
+                    } else if (data.message.product) {
+                        lastMessageText += "Shared an item";
+                    }
+                    lastMessageElement.text(lastMessageText);
+
+                    // Update timestamp
+                    const timeElement = conversationItem.find('span.text-xs.self-start');
+                    timeElement.text(data.message.date);
+
+                    // Move conversation to the top
+                    conversationItem.parent().prepend(conversationItem);
+                }
+            },
+            error: function() {
+                UIkit.notification({ message: 'Could not send message.', status: 'danger' });
+            }
+        });
+    });
+});
+</script>
+{% endblock scripts %}

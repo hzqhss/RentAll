@@ -1,0 +1,50 @@
+<!-- Rate Item Offcanvas for request {{ req.rr_id }} -->
+<div id="rate-item-offcanvas-{{ req.rr_id }}" uk-offcanvas="flip: true; overlay: true">
+    <div class="uk-offcanvas-bar lg:w-4/12 w-full dark:bg-gray-700 dark:text-gray-300 p-0 bg-white flex flex-col justify-center">
+        <button class="uk-offcanvas-close absolute" type="button" uk-close></button>
+
+        <!-- header -->
+        <div class="-mb-1 border-b font-semibold px-5 py-5 text-lg">
+            <h4>Rate Item</h4>
+        </div>
+
+        <form action="{% url 'core:submit-review' req.rr_id %}" method="POST" class="p-6 space-y-4 flex-1 overflow-y-auto">
+            {% csrf_token %}
+            
+            <!-- Item Summary -->
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <div class="flex items-center space-x-4">
+                    <img src="{{ req.product.image.url }}" class="w-16 h-16 rounded-lg object-cover" alt="">
+                    <div class="flex-1">
+                        <p class="font-bold text-lg">{{ req.product.title }}</p>
+                        <p class="text-sm text-gray-500">Owner: {{ req.owner.profile.full_name }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Star Rating -->
+            <div>
+                <label class="mb-2 block font-medium"> Your Rating <span class="text-red-500">*</span></label>
+                <div class="flex space-x-1 text-3xl text-gray-300 star-rating" data-request-id="{{ req.rr_id }}">
+                    <ion-icon name="star" class="cursor-pointer star" data-value="1"></ion-icon>
+                    <ion-icon name="star" class="cursor-pointer star" data-value="2"></ion-icon>
+                    <ion-icon name="star" class="cursor-pointer star" data-value="3"></ion-icon>
+                    <ion-icon name="star" class="cursor-pointer star" data-value="4"></ion-icon>
+                    <ion-icon name="star" class="cursor-pointer star" data-value="5"></ion-icon>
+                </div>
+                <input type="hidden" name="rating" id="rating-input-{{ req.rr_id }}" required>
+            </div>
+
+            <!-- Review Comment -->
+            <div>
+                <label class="mb-2 block font-medium"> Your Review <span class="text-red-500">*</span></label>
+                <textarea name="comment" class="with-border" rows="4" placeholder="Share your experience with this item..." required maxlength="300"></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="p-5">
+                <button type="submit" id="submit-review-btn-{{ req.rr_id }}" class="button w-full bg-blue-600 text-white" disabled>Submit Review</button>
+            </div>
+        </form>
+    </div>
+</div>
