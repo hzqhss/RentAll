@@ -1,0 +1,6 @@
+django
+django-taggit
+django-crispy-forms
+pillow
+django-import-export
+django-jazzmin
